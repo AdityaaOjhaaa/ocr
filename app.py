@@ -116,43 +116,53 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
+def process_image():
+    if uploaded_file:
+        # Create columns for layout
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            # Display image
+            image = Image.open(uploaded_file)
+            st.image(image, width=400, caption="Uploaded Image")
+        
+        with col2:
+            # Extract text button
+            if st.button("Extract Text", key="extract"):
+                with st.spinner("Processing..."):
+                    try:
+                        # Convert uploaded file to numpy array
+                        image_array = np.array(image)
+                        
+                        # Perform OCR
+                        result = reader.readtext(image_array, detail=0)
+                        extracted_text = "\n".join(result)
+                        st.session_state.processed_text = extracted_text
+                        
+                    except Exception as e:
+                        st.error(f"Error processing image: {str(e)}")
+            
+            # Display result if available
+            if st.session_state.processed_text:
+                st.markdown("<div class='result-container'>", unsafe_allow_html=True)
+                st.text_area("Extracted Text", st.session_state.processed_text, height=200)
+                
+                # Copy button
+                if st.button("Copy Text", key="copy"):
+                    st.toast("Text copied to clipboard!", icon="✅")
+                
+                # Try another image button
+                if st.button("Try Another Image", key="try_another"):
+                    st.session_state.processed_text = None
+                    st.experimental_rerun()
+                
+                st.markdown("</div>", unsafe_allow_html=True)
+
 # File uploader
 uploaded_file = st.file_uploader("Drop your image here or click to browse", type=['png', 'jpg', 'jpeg'])
 
-if uploaded_file:
-    # Create columns for layout
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        # Display image
-        image = Image.open(uploaded_file)
-        st.image(image, width=400, caption="Uploaded Image")
-    
-    with col2:
-        # Extract text button
-        if st.button("Extract Text", key="extract"):
-            with st.spinner("Processing..."):
-                try:
-                    # Convert uploaded file to numpy array
-                    image_array = np.array(image)
-                    
-                    # Perform OCR
-                    result = reader.readtext(image_array, detail=0)
-                    extracted_text = "\n".join(result)
-                    st.session_state.processed_text = extracted_text
-                    
-                except Exception as e:
-                    st.error(f"Error processing image: {str(e)}")
-        
-        # Display result if available
-        if st.session_state.processed_text:
-            st.markdown("<div class='result-container'>", unsafe_allow_html=True)
-            st.text_area("Extracted Text", st.session_state.processed_text, height=200)
-            
-            # Copy button
-            if st.button("Copy Text", key="copy"):
-                st.toast("Text copied to clipboard!", icon="✅")
-            st.markdown("</div>", unsafe_allow_html=True)
+# Process the image
+process_image()
 
 # Footer
 st.markdown("""
