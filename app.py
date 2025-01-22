@@ -1,8 +1,8 @@
 import streamlit as st
 import easyocr
 from PIL import Image
-import io
 import numpy as np
+import base64
 
 # Page configuration
 st.set_page_config(page_title="Smart OCR Scanner", layout="wide")
@@ -83,10 +83,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Initialize session state
-if 'processed_text' not in st.session_state:
-    st.session_state.processed_text = None
-
 # Initialize EasyOCR
 @st.cache_resource
 def load_ocr():
@@ -116,53 +112,55 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-def process_image():
+# Initialize session state
+if 'processed_text' not in st.session_state:
+    st.session_state['processed_text'] = None
+
+# Function to copy text to clipboard
+def copy_to_clipboard(text):
+    b64_text = base64.b64encode(text.encode()).decode()
+    st.markdown(f"""
+        <script>
+        navigator.clipboard.writeText(atob("{b64_text}"));
+        </script>
+    """, unsafe_allow_html=True)
+
+# Process image function
+def process_image(uploaded_file):
     if uploaded_file:
-        # Create columns for layout
-        col1, col2 = st.columns([1, 1])
-        
-        with col1:
-            # Display image
-            image = Image.open(uploaded_file)
-            st.image(image, width=400, caption="Uploaded Image")
-        
-        with col2:
-            # Extract text button
-            if st.button("Extract Text", key="extract"):
-                with st.spinner("Processing..."):
-                    try:
-                        # Convert uploaded file to numpy array
-                        image_array = np.array(image)
-                        
-                        # Perform OCR
-                        result = reader.readtext(image_array, detail=0)
-                        extracted_text = "\n".join(result)
-                        st.session_state.processed_text = extracted_text
-                        
-                    except Exception as e:
-                        st.error(f"Error processing image: {str(e)}")
-            
-            # Display result if available
-            if st.session_state.processed_text:
-                st.markdown("<div class='result-container'>", unsafe_allow_html=True)
-                st.text_area("Extracted Text", st.session_state.processed_text, height=200)
-                
-                # Copy button
-                if st.button("Copy Text", key="copy"):
-                    st.toast("Text copied to clipboard!", icon="✅")
-                
-                # Try another image button
-                if st.button("Try Another Image", key="try_another"):
-                    st.session_state.processed_text = None
-                    st.experimental_rerun()
-                
-                st.markdown("</div>", unsafe_allow_html=True)
+        image = Image.open(uploaded_file)
+        image_array = np.array(image)
+        st.image(image, width=400, caption="Uploaded Image")
+
+        if st.button("Extract Text"):
+            with st.spinner("Processing..."):
+                try:
+                    result = reader.readtext(image_array, detail=0)
+                    extracted_text = "\n".join(result)
+                    st.session_state['processed_text'] = extracted_text
+                except Exception as e:
+                    st.error(f"Error processing image: {e}")
 
 # File uploader
 uploaded_file = st.file_uploader("Drop your image here or click to browse", type=['png', 'jpg', 'jpeg'])
 
-# Process the image
-process_image()
+if uploaded_file:
+    process_image(uploaded_file)
+
+if st.session_state['processed_text']:
+    st.markdown("<div class='result-container'>", unsafe_allow_html=True)
+    st.text_area("Extracted Text", st.session_state['processed_text'], height=200)
+
+    if st.button("Copy Text"):
+        copy_to_clipboard(st.session_state['processed_text'])
+        st.success("Text copied to clipboard!")
+
+    if st.button("Try Another Image"):
+        st.session_state['processed_text'] = None
+        st.experimental_set_query_params()  # Resets the URL and clears the state
+        st.experimental_rerun()
+
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # Footer
 st.markdown("""
