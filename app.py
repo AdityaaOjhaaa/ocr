@@ -121,7 +121,9 @@ def copy_to_clipboard(text):
     b64_text = base64.b64encode(text.encode()).decode()
     st.markdown(f"""
         <script>
-        navigator.clipboard.writeText(atob("{b64_text}"));
+        navigator.clipboard.writeText(atob("{b64_text}")).then(function() {{
+            alert("Text copied to clipboard!");
+        }});
         </script>
     """, unsafe_allow_html=True)
 
@@ -153,11 +155,9 @@ if st.session_state['processed_text']:
 
     if st.button("Copy Text"):
         copy_to_clipboard(st.session_state['processed_text'])
-        st.success("Text copied to clipboard!")
 
     if st.button("Try Another Image"):
-        st.session_state['processed_text'] = None
-        st.experimental_set_query_params()  # Resets the URL and clears the state
+        st.session_state['processed_text'] = None  # Reset session state
         st.experimental_rerun()
 
     st.markdown("</div>", unsafe_allow_html=True)
